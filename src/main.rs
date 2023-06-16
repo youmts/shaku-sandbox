@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use async_trait::async_trait;
 use shaku::{module, Component, HasComponent, Interface};
 
 pub trait DatabaseConnection: Interface {
@@ -27,8 +28,9 @@ pub struct User {
     name: String,
 }
 
+#[async_trait]
 pub trait UserRepository: Interface {
-    fn find_user(&self, id: String) -> Result<Option<User>>;
+    async fn find_user(&self, id: String) -> Result<Option<User>>;
     fn update(&self, user: User) -> Result<()>;
 }
 
@@ -39,8 +41,9 @@ pub struct UserRepositoryImpl {
     connection: Arc<dyn DatabaseConnection>,
 }
 
+#[async_trait]
 impl UserRepository for UserRepositoryImpl {
-    fn find_user(&self, id: String) -> Result<Option<User>> {
+    async fn find_user(&self, id: String) -> Result<Option<User>> {
         self.connection.connect().unwrap();
 
         Ok(Some(User {
@@ -53,8 +56,9 @@ impl UserRepository for UserRepositoryImpl {
     }
 }
 
+#[async_trait]
 pub trait UserService: Interface {
-    fn find_user(&self, id: String) -> Result<Option<User>>;
+    async fn find_user(&self, id: String) -> Result<Option<User>>;
     fn deactivate_user(&self, id: String) -> Result<()>;
 }
 
@@ -65,9 +69,10 @@ pub struct UserServiceImpl {
     user_repository: Arc<dyn UserRepository>,
 }
 
+#[async_trait]
 impl UserService for UserServiceImpl {
-    fn find_user(&self, id: String) -> Result<Option<User>> {
-        self.user_repository.find_user(id)
+    async fn find_user(&self, id: String) -> Result<Option<User>> {
+        self.user_repository.find_user(id).await
     }
 
     fn deactivate_user(&self, _id: String) -> Result<()> {
@@ -82,7 +87,8 @@ module! {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let module = AppModule::builder()
         .with_component_parameters::<DatabaseConnectionImpl>(DatabaseConnectionImplParameters {
             connection_string: "User ID=user;Password=password;Host=localhost;Port=5432;Database=myDataBase;Pooling=true;Min Pool Size=0;Max Pool Size=100;Connection Lifetime=0;".to_owned()
@@ -90,7 +96,7 @@ fn main() {
     .build();
 
     let user_service: &dyn UserService = module.resolve_ref();
-    let user = user_service.find_user("id001".to_owned()).unwrap();
+    let user = user_service.find_user("id001".to_owned()).await.unwrap();
 
     println!("result: {:?}", user);
 }

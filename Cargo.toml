@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 shaku = "*"
 anyhow = "*"
+async-trait = "*"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
