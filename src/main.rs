@@ -33,7 +33,6 @@ pub struct User {
 #[async_trait]
 pub trait UserRepository: Interface {
     async fn find_user(&self, id: String) -> Result<Option<User>>;
-    fn update(&self, user: User) -> Result<()>;
 }
 
 #[derive(Component)]
@@ -51,10 +50,6 @@ impl UserRepository for UserRepositoryImpl {
         Ok(Some(User {
             name: format!("test_user_{}", id),
         }))
-    }
-
-    fn update(&self, _user: User) -> Result<()> {
-        todo!()
     }
 }
 
