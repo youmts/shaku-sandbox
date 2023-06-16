@@ -9,4 +9,6 @@ edition = "2021"
 shaku = "*"
 anyhow = "*"
 async-trait = "*"
+mockall = "*"
+derive-new = "*"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

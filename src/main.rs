@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use mockall::automock;
 use shaku::{module, Component, HasComponent, Interface};
 
 pub trait DatabaseConnection: Interface {
@@ -23,11 +24,12 @@ impl DatabaseConnection for DatabaseConnectionImpl {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct User {
     name: String,
 }
 
+#[automock]
 #[async_trait]
 pub trait UserRepository: Interface {
     async fn find_user(&self, id: String) -> Result<Option<User>>;
@@ -64,6 +66,7 @@ pub trait UserService: Interface {
 
 #[derive(Component)]
 #[shaku(interface = UserService)]
+#[cfg_attr(any(test), derive(derive_new::new))]
 pub struct UserServiceImpl {
     #[shaku(inject)]
     user_repository: Arc<dyn UserRepository>,
@@ -99,4 +102,30 @@ async fn main() {
     let user = user_service.find_user("id001".to_owned()).await.unwrap();
 
     println!("result: {:?}", user);
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use crate::{MockUserRepository, User, UserService, UserServiceImpl};
+
+    #[tokio::test]
+    async fn test_user_service() {
+        let mut mock_user_repository = MockUserRepository::new();
+        mock_user_repository.expect_find_user().returning(|id| {
+            Ok(Some(User {
+                name: format!("mock_user_{}", id),
+            }))
+        });
+
+        let user_service = UserServiceImpl::new(Arc::new(mock_user_repository));
+        let actual = user_service.find_user("1".to_owned()).await.unwrap();
+
+        let expected = Some(User {
+            name: "mock_user_1".to_owned(),
+        });
+
+        assert_eq!(actual, expected);
+    }
 }
